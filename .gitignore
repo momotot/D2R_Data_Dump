@@ -1,0 +1,18 @@
+# Ignore specific files
+*.dc6
+*.sprite
+*.json
+*.txt
+*.dat
+*.ttf
+*.otf
+
+# Ignore specific folders
+/x64/
+/D2R_Data_Dump/
+
+# Visual Studio files
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+.vs/
