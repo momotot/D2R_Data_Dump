@@ -125,7 +125,7 @@ int main() {
     int filesDumped = 0;
     auto start = std::chrono::high_resolution_clock::now();
 
-    // resursively read and save files found for the selected type
+    // iterate over the files
     do {
         std::string filePath = fd.szFileName;
         std::string filePathLower = filePath;
