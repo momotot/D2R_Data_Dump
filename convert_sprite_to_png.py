@@ -51,7 +51,7 @@ def decode_sprite(sprite_path: Path) -> None:
         # pre-allocate RGBA buffer (height * frame_w)
         buf = np.zeros((height, frame_w, 4), dtype=np.uint8)
 
-        # pixel loop – same layout you already had
+        # read pixel rgba
         for y in range(height):
             for x in range(frame_w):
                 xx = frame_off * frm + x
