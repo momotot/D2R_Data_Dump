@@ -7,25 +7,52 @@ from concurrent.futures import ProcessPoolExecutor
 import sys
 import os
 
-# CONFIG
-INPUT_ROOT  = Path("sprite")      # folder that contains the dumped .sprite files
-OUTPUT_ROOT = Path("png")         # where the PNGs will be written
-SKIP_IF_CONTAINS = "lowend"       # skip files that contain this string (case-insensitive)
-VERSION_REQUIRED = 31             # only process HD sprites (version 31)
-
 # Ensure a directory exists
 def ensure_dir(p: Path):
     p.mkdir(parents=True, exist_ok=True)
 
+# choose the d2r version to look at
+def choose_version() -> str:
+    cwd = Path.cwd()
+    candidates = [
+        p for p in cwd.iterdir()
+        if p.is_dir() and "_" in p.name and p.name.replace("_", "").isdigit()
+    ]
+    if not candidates:
+        print("[ERROR] No version folder found (e.g. 1_6_89560)")
+        sys.exit(1)
+
+    candidates.sort(key=lambda x: x.name)
+    folder_names = [p.name for p in candidates]
+
+    print("[INFO] Available version folders:")
+    for i, name in enumerate(folder_names, 1):
+        print(f"  {i}. {name}")
+
+    while True:
+        choice = input("\nEnter the number of the version to process: ").strip()
+        try:
+            idx = int(choice) - 1
+            if 0 <= idx < len(folder_names):
+                selected = folder_names[idx]
+                print(f"[SELECTED] Using: {selected}")
+                return selected
+        except ValueError:
+            pass
+        print("  Invalid input – please enter a number from the list.")
 
 # Decode .sprite file
-def decode_sprite(sprite_path: Path) -> None:
+def decode_sprite(args: tuple[Path, Path, Path]) -> None:
+    sprite_path, input_root, output_root = args
+
     try:
         with sprite_path.open('rb') as f:
             data = ConstBitStream(bytes=f.read())
     except Exception as e:
         print(f"[ERROR] Cannot read {sprite_path}: {e}")
         return
+
+    VERSION_REQUIRED = 31
 
     # header
     data.pos = 0x04 * 8
@@ -42,8 +69,8 @@ def decode_sprite(sprite_path: Path) -> None:
     frame_off = width // frames          # distance between frames in the stream
 
     # output folder
-    rel = sprite_path.relative_to(INPUT_ROOT) 
-    out_dir = OUTPUT_ROOT / rel.parent 
+    rel = sprite_path.relative_to(input_root) 
+    out_dir = output_root / rel.parent 
     ensure_dir(out_dir)
 
     # decode each frame
@@ -51,7 +78,7 @@ def decode_sprite(sprite_path: Path) -> None:
         # pre-allocate RGBA buffer (height * frame_w)
         buf = np.zeros((height, frame_w, 4), dtype=np.uint8)
 
-        # read pixel rgba
+        # pixel loop – same layout you already had
         for y in range(height):
             for x in range(frame_w):
                 xx = frame_off * frm + x
@@ -71,16 +98,26 @@ def decode_sprite(sprite_path: Path) -> None:
         print(f"[OK] {out_path}")
 
 # Worker for ProcessPoolExecutor
-def worker(sprite_path: Path):
-    decode_sprite(sprite_path)
+def worker(task: tuple[Path, Path, Path]) -> None:
+    decode_sprite(task)
 
 # Main => recursive walk + multiprocessing
 def main():
-    ensure_dir(OUTPUT_ROOT)
+    version = choose_version()
+    input_root = Path(version) / "sprite"
+    output_root = Path(f"png_{version}")
+
+    if not input_root.is_dir():
+        print(f"[ERROR] Input folder not found: {input_root}")
+        sys.exit(1)
+
+    ensure_dir(output_root)
 
     # find **all** .sprite files recursively
-    pattern = str(INPUT_ROOT / "**" / "*.sprite")
+    pattern = str(input_root / "**" / "*.sprite")
     sprite_files = [Path(p) for p in glob.glob(pattern, recursive=True)]
+
+    SKIP_IF_CONTAINS = "lowend"
 
     # filter out "lowend"
     filtered = [
@@ -90,16 +127,14 @@ def main():
 
     print(f"[INFO] Found {len(filtered)} sprite(s) to process (out of {len(sprite_files)} total).")
 
-    # use all CPU cores
+    # use all CPU cores and build tasks with the files and paths
     max_workers = os.cpu_count() or 1
+    tasks = [(p, input_root, output_root) for p in filtered]
+
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        executor.map(worker, filtered)
+        executor.map(worker, tasks)
 
     print("[DONE] All frames extracted.")
 
 if __name__ == "__main__":
-    # Dont run if input folder is missing
-    if not INPUT_ROOT.is_dir():
-        print(f"[ERROR] Input folder not found: {INPUT_ROOT}")
-        sys.exit(1)
     main()
