@@ -8,7 +8,9 @@ The python script is heavily inspired by [d2r-sprites by dzik](https://github.co
 ## Features
 
 - Dump files by extension (e.g., `.sprite`, `.json`).
-- Can convert `.sprite` files to `.png` files
+- Option to dump all files (`.all` command).
+- Sorting the dump in d2r version folders.
+- Can convert `.sprite` files to `.png` files with the included python script.
 
 ## Requirements
 
