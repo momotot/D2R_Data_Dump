@@ -1,6 +1,6 @@
 # D2R Data Dumper
 
-A tool to extract and dump specific file types from **Diablo II: Resurrected (D2R)** using **CascLib**. 
+A tool to extract and dump files from **Diablo II: Resurrected (D2R)** using **CascLib**. 
 It also includes a Python script to convert **.sprite** files to **.png**.
 
 The python script is heavily inspired by [d2r-sprites by dzik](https://github.com/dzik87/d2r-sprites)
